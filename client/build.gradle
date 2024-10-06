@@ -1,0 +1,85 @@
+import com.diffplug.gradle.spotless.SpotlessExtension
+import com.github.spotbugs.snom.Effort
+
+plugins {
+    // Apply the java Plugin to add support for Java.
+    id 'java'
+    id 'application'
+
+    // Quality stuff
+    id 'checkstyle'
+    id "com.github.spotbugs" version "6.0.11"
+    id "com.diffplug.spotless" version "6.25.0"
+}
+
+dependencies {
+    implementation project(':communication')
+    implementation project(':game')
+    implementation 'org.json:json:20210307'
+    implementation 'com.squareup.moshi:moshi:1.12.0'
+    implementation 'com.squareup.moshi:moshi-adapters:1.12.0'
+}
+
+application {
+    // Define the main class for the application.
+    mainClass = 'highlowcardgame.client.Client'
+}
+
+repositories {
+    // Use Maven Central for resolving dependencies.
+    mavenCentral()
+}
+
+dependencies {
+
+    // Use JUnit Jupiter API for testing.
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.1'
+    testImplementation 'com.google.truth:truth:1.4.2'
+
+    // Use JUnit Jupiter Engine for testing.
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+}
+
+tasks.named("run") { standardInput = System.in }
+
+tasks.withType(Javadoc) {
+    options {
+        addBooleanOption("Werror", true)
+    }
+}
+
+tasks.named("test") {
+    // Use JUnit Platform for unit tests.
+    useJUnitPlatform()
+}
+
+checkstyle {
+    toolVersion = "10.15.0"
+    maxWarnings = 0
+}
+
+spotbugs {
+    effort = Effort.MAX
+    ignoreFailures = false
+}
+
+tasks.spotbugsMain {
+    reports.create("html") {
+        required = true
+        outputLocation = layout.buildDirectory.file("reports/spotbugs.html")
+    }
+}
+
+tasks.spotbugsTest {
+    reports.create("html") {
+        required = true
+        outputLocation = layout.buildDirectory.file("reports/spotbugsTests.html")
+    }
+}
+
+spotless {
+    java {
+        googleJavaFormat()
+        lineEndings 'UNIX'
+    }
+}

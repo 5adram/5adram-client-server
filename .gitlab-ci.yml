@@ -1,0 +1,95 @@
+image: gradle:8.7-jdk21
+
+# Disable the Gradle daemon for Continuous Integration servers as correctness
+# is usually a priority over speed in CI environments. Using a fresh
+# runtime for each build is more reliable since the runtime is completely
+# isolated from any previous builds.
+variables:
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+
+before_script:
+  - export GRADLE_USER_HOME=`pwd`/.gradle
+
+stages:
+  - build
+  - required
+  - optional-tests
+  - optional-quality
+
+build:
+  stage: build
+  script: gradle assemble
+
+javadoc:
+  stage: required
+  script:
+    - gradle :client:javadoc :server:javadoc
+  artifacts:
+    # Store generated JavaDoc on success
+    when: on_success
+    paths:
+      - '**/build/docs/javadoc/'
+    # Each task takes 2 weeks, so storing artifacts for that
+    # time windows should be enough for efficient work + feedback
+    expire_in: 2 weeks
+
+test-basic:
+  stage: required
+  script: gradle :client:test --tests highlowcardgame.client.ClientRequiredTest :server:test --tests highlowcardgame.server.ServerRequiredTest
+  artifacts:
+    # Only store artifacts on failure, for inspection of the error reports
+    when: on_failure
+    paths:
+      - '**/build/reports/'
+    # Each task takes 2 weeks, so storing artifacts for that
+    # time windows should be enough for efficient work + feedback
+    expire_in: 2 weeks
+
+test-all:
+  stage: optional-tests
+  needs: ["test-basic"]
+  script: gradle :client:test --tests highlowcardgame.client.ClientAdvancedTest  :server:test --tests highlowcardgame.server.ServerAdvancedTest
+  allow_failure: true
+  artifacts:
+    # Only store artifacts on failure, for inspection of the error reports
+    when: on_failure
+    paths:
+      - '**/build/reports/'
+    # Each task takes 2 weeks, so storing artifacts for that
+    # time windows should be enough for efficient work + feedback
+    expire_in: 2 weeks
+
+code-format:
+  stage: optional-quality
+  needs: ["test-basic"]
+  script: gradle spotlessCheck --continue
+  allow_failure: true
+
+checkstyle:
+  stage: optional-quality
+  needs: ["test-basic"]
+  script: gradle :client:checkstyleMain :server:checkstyleMain
+  allow_failure: true
+  artifacts:
+    # Only store artifacts on failure, for inspection of the error reports
+    when: on_failure
+    paths:
+      - '**/build/reports/'
+    # Each task takes 2 weeks, so storing artifacts for that
+    # time windows should be enough for efficient work + feedback
+    expire_in: 2 weeks
+
+spotbugs:
+  stage: optional-quality
+  needs: ["test-basic"]
+  script: gradle :client:spotbugsMain :server:spotbugsMain
+  allow_failure: true
+  artifacts:
+    # Only store artifacts on failure, for inspection of the error reports
+    when: on_failure
+    paths:
+      - '**/build/reports/'
+    # Each task takes 2 weeks, so storing artifacts for that
+    # time windows should be enough for efficient work + feedback
+    expire_in: 2 weeks
+
